@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Search, ChevronLeft, ChevronRight, Save, X, Trash2, LogOut, Plus, Edit, Loader2 } from 'lucide-react';
+import { MapPin, Search, ChevronLeft, ChevronRight, Save, X, Trash2, LogOut, Plus, Edit, Loader2, Lock } from 'lucide-react';
 import { useDataService } from '../../lib/dataService';
+import { usePermissions } from '../../lib/usePermissions';
 
 const StationMaster = () => {
     const [mode, setMode] = useState('view');
@@ -8,6 +9,9 @@ const StationMaster = () => {
     const [isVisible, setIsVisible] = useState(false);
     const [formData, setFormData] = useState({ id: null, code: '', name: '' });
     const [isSaving, setIsSaving] = useState(false);
+
+    // Get permissions for this module
+    const { canAdd, canEdit, canDelete, canView } = usePermissions('stations');
 
     // Connect to database
     const { data: records, loading, error, create, update, remove, refresh } = useDataService('stations');
@@ -28,11 +32,13 @@ const StationMaster = () => {
     };
 
     const handleAddNew = () => {
+        if (!canAdd) return;
         setMode('add');
         setFormData({ id: null, code: '', name: '' });
     };
 
     const handleEdit = () => {
+        if (!canEdit) return;
         setMode('edit');
     };
 
@@ -41,7 +47,7 @@ const StationMaster = () => {
         try {
             if (mode === 'add') {
                 await create({ code: formData.code, name: formData.name });
-                setCurrentIndex(records.length); // Go to new record
+                setCurrentIndex(records.length);
             } else {
                 await update(formData.id, { code: formData.code, name: formData.name });
             }
@@ -62,6 +68,7 @@ const StationMaster = () => {
     };
 
     const handleDelete = async () => {
+        if (!canDelete) return;
         if (window.confirm('Are you sure you want to delete this record?')) {
             try {
                 await remove(formData.id);
@@ -111,6 +118,13 @@ const StationMaster = () => {
         );
     }
 
+    // Permission denied button style
+    const DisabledButton = ({ children, title }) => (
+        <button disabled title={title} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-800/30 text-slate-600 rounded-lg border border-slate-700/30 font-medium cursor-not-allowed opacity-50">
+            <Lock className="w-4 h-4" />{children}
+        </button>
+    );
+
     return (
         <div className={`space-y-6 text-text-main transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             {/* Header */}
@@ -119,9 +133,18 @@ const StationMaster = () => {
                     <h2 className="text-3xl font-bold gradient-text tracking-tight">Station Master</h2>
                     <p className="text-slate-400 mt-1">Manage stations and locations</p>
                 </div>
-                <span className="px-3 py-1.5 bg-slate-800/50 rounded-lg text-xs text-slate-400">
-                    Record {records.length > 0 ? currentIndex + 1 : 0} of {records.length}
-                </span>
+                <div className="flex items-center space-x-3">
+                    {/* Permission Indicator */}
+                    <div className="flex items-center space-x-1 text-xs">
+                        <span className={`px-2 py-1 rounded ${canView ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-500'}`}>View</span>
+                        <span className={`px-2 py-1 rounded ${canAdd ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-500'}`}>Add</span>
+                        <span className={`px-2 py-1 rounded ${canEdit ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-500'}`}>Edit</span>
+                        <span className={`px-2 py-1 rounded ${canDelete ? 'bg-red-500/20 text-red-400' : 'bg-slate-700 text-slate-500'}`}>Delete</span>
+                    </div>
+                    <span className="px-3 py-1.5 bg-slate-800/50 rounded-lg text-xs text-slate-400">
+                        Record {records.length > 0 ? currentIndex + 1 : 0} of {records.length}
+                    </span>
+                </div>
             </div>
 
             {/* Main Form */}
@@ -171,28 +194,58 @@ const StationMaster = () => {
                 {/* Action Buttons */}
                 <div className="px-6 py-4 border-t border-white/5 bg-slate-800/30">
                     <div className="flex flex-wrap items-center justify-center gap-2">
-                        <button onClick={handleAddNew} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95">
-                            <Plus className="w-4 h-4" /><span>Add New</span>
-                        </button>
-                        <button onClick={handleEdit} disabled={mode !== 'view' || records.length === 0} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                            <Edit className="w-4 h-4" /><span>Edit</span>
-                        </button>
+                        {/* Add Button - Only show if user has add permission */}
+                        {canAdd ? (
+                            <button onClick={handleAddNew} className="flex items-center space-x-2 px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-all border border-emerald-500/30 font-medium hover:scale-105 active:scale-95">
+                                <Plus className="w-4 h-4" /><span>Add New</span>
+                            </button>
+                        ) : (
+                            <DisabledButton title="You don't have permission to add"><span>Add New</span></DisabledButton>
+                        )}
+
+                        {/* Edit Button - Only show if user has edit permission */}
+                        {canEdit ? (
+                            <button onClick={handleEdit} disabled={mode !== 'view' || records.length === 0} className="flex items-center space-x-2 px-4 py-2.5 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 rounded-lg transition-all border border-amber-500/30 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
+                                <Edit className="w-4 h-4" /><span>Edit</span>
+                            </button>
+                        ) : (
+                            <DisabledButton title="You don't have permission to edit"><span>Edit</span></DisabledButton>
+                        )}
+
+                        {/* Navigation buttons - always visible */}
                         <button onClick={handleNext} disabled={currentIndex >= records.length - 1} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
                             <span>Next</span><ChevronRight className="w-4 h-4" />
                         </button>
                         <button onClick={handlePrevious} disabled={currentIndex <= 0} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
                             <ChevronLeft className="w-4 h-4" /><span>Previous</span>
                         </button>
-                        <button onClick={handleSave} disabled={mode === 'view' || isSaving} className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            <span>{isSaving ? 'Saving...' : 'Save'}</span>
-                        </button>
-                        <button onClick={handleCancel} disabled={mode === 'view'} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                            <X className="w-4 h-4" /><span>Cancel</span>
-                        </button>
-                        <button onClick={handleDelete} disabled={records.length === 0} className="flex items-center space-x-2 px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all border border-red-500/30 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                            <Trash2 className="w-4 h-4" /><span>Delete</span>
-                        </button>
+
+                        {/* Save/Cancel - Only show in edit/add mode if user has permission */}
+                        {(mode === 'add' && canAdd) || (mode === 'edit' && canEdit) ? (
+                            <>
+                                <button onClick={handleSave} disabled={isSaving} className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
+                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                                </button>
+                                <button onClick={handleCancel} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95">
+                                    <X className="w-4 h-4" /><span>Cancel</span>
+                                </button>
+                            </>
+                        ) : mode !== 'view' ? (
+                            <button onClick={handleCancel} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95">
+                                <X className="w-4 h-4" /><span>Cancel</span>
+                            </button>
+                        ) : null}
+
+                        {/* Delete Button - Only show if user has delete permission */}
+                        {canDelete ? (
+                            <button onClick={handleDelete} disabled={records.length === 0} className="flex items-center space-x-2 px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all border border-red-500/30 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
+                                <Trash2 className="w-4 h-4" /><span>Delete</span>
+                            </button>
+                        ) : (
+                            <DisabledButton title="You don't have permission to delete"><span>Delete</span></DisabledButton>
+                        )}
+
                         <button className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95">
                             <LogOut className="w-4 h-4" /><span>Exit</span>
                         </button>
@@ -203,8 +256,8 @@ const StationMaster = () => {
             {/* Mode Indicator */}
             <div className="flex justify-center">
                 <span className={`px-4 py-2 rounded-full text-sm font-medium ${mode === 'view' ? 'bg-slate-700/50 text-slate-400' :
-                        mode === 'add' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                    mode === 'add' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                        'bg-blue-500/20 text-blue-400 border border-blue-500/30'
                     }`}>
                     Mode: {mode === 'view' ? '👁️ View Only' : mode === 'add' ? '➕ Adding New' : '✏️ Editing'}
                 </span>
