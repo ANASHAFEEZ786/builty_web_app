@@ -20,6 +20,9 @@ import DieselStationMaster from "./pages/profiles/DieselStationMaster";
 import AccountsCategoryMaster from "./pages/profiles/AccountsCategoryMaster";
 import ItemMaster from "./pages/profiles/ItemMaster";
 
+// Admin Pages
+import UserManagement from "./pages/admin/UserManagement";
+
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -91,6 +94,9 @@ const AppRoutes = () => {
                 <Route path="/profiles/accounts-location" element={<StationMaster />} />
                 <Route path="/profiles/items" element={<ItemMaster />} />
                 <Route path="/profiles/opening-stock" element={<ItemMaster />} />
+
+                {/* Admin Routes */}
+                <Route path="/admin/users" element={<UserManagement />} />
 
                 {/* Catch all - redirect to dashboard */}
                 <Route path="*" element={<Navigate to="/" replace />} />

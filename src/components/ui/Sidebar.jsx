@@ -20,7 +20,8 @@ import {
     Layers,
     FolderTree,
     Package,
-    User
+    User,
+    Shield
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,9 +29,11 @@ const Sidebar = ({ onLogout }) => {
     const location = useLocation();
     const navigate = useNavigate();
     const [profilesOpen, setProfilesOpen] = useState(location.pathname.startsWith('/profiles'));
+    const [adminOpen, setAdminOpen] = useState(location.pathname.startsWith('/admin'));
 
     // Get user info from localStorage
     const user = JSON.parse(localStorage.getItem('builty_user') || '{}');
+    const isAdmin = user?.role === 'admin';
 
     // Profile sub-menu items
     const profileSubItems = [
@@ -176,6 +179,40 @@ const Sidebar = ({ onLogout }) => {
                         </div>
                     </div>
                 </div>
+
+                {/* Admin Section - Only for Admins */}
+                {isAdmin && (
+                    <div>
+                        <button
+                            onClick={() => setAdminOpen(!adminOpen)}
+                            className={cn(
+                                "w-full flex items-center space-x-3 px-4 py-3.5 rounded-xl transition-all duration-300 group relative overflow-hidden",
+                                location.pathname.startsWith('/admin')
+                                    ? "bg-gradient-to-r from-red-600/20 to-orange-600/20 text-white border border-white/10"
+                                    : "text-slate-400 hover:text-white hover:bg-white/5"
+                            )}
+                        >
+                            {location.pathname.startsWith('/admin') && (
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-red-500 to-orange-500 rounded-r-full" />
+                            )}
+                            <div className={cn(
+                                "p-2 rounded-lg transition-all duration-300",
+                                location.pathname.startsWith('/admin') ? "bg-gradient-to-br from-red-500/30 to-orange-500/30" : "bg-slate-800/50 group-hover:bg-slate-700/50"
+                            )}>
+                                <Shield className={cn("w-5 h-5", location.pathname.startsWith('/admin') ? "text-red-400" : "text-slate-500 group-hover:text-slate-300")} />
+                            </div>
+                            <span className="font-medium flex-1 text-left">Admin</span>
+                            {adminOpen ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
+                        </button>
+                        <div className={cn("overflow-hidden transition-all duration-300", adminOpen ? "max-h-[200px] opacity-100" : "max-h-0 opacity-0")}>
+                            <div className="ml-4 mt-1 pl-4 border-l border-slate-700/50 space-y-1">
+                                <NavLink to="/admin/users" className={({ isActive }) => cn("flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-all duration-200", isActive ? "bg-red-500/10 text-red-400 font-medium" : "text-slate-500 hover:text-slate-300 hover:bg-white/5")}>
+                                    <Users className="w-4 h-4" /><span>User Management</span>
+                                </NavLink>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Other Nav Items */}
                 {navItems.slice(1).map((item) => (
