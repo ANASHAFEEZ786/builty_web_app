@@ -1,42 +1,58 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Search, ChevronLeft, ChevronRight, Save, X, Trash2, LogOut, Plus, Edit } from 'lucide-react';
+import { FileText, Search, ChevronLeft, ChevronRight, Save, X, Trash2, LogOut, Plus, Edit, Loader2 } from 'lucide-react';
+import { useDataService } from '../../lib/dataService';
 
 const BiltyTypeMaster = () => {
     const [mode, setMode] = useState('view');
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
+    const [formData, setFormData] = useState({ id: null, code: '', name: '' });
+    const [isSaving, setIsSaving] = useState(false);
+
+    const { data: records, loading, error, create, update, remove, refresh } = useDataService('bilty_types');
 
     useEffect(() => { setIsVisible(true); }, []);
 
-    const [records, setRecords] = useState([
-        { id: 1, code: '01', name: 'LOCAL DELIVERY' },
-        { id: 2, code: '02', name: 'INTER-CITY' },
-        { id: 3, code: '03', name: 'EXPRESS DELIVERY' },
-        { id: 4, code: '04', name: 'HEAVY CARGO' },
-        { id: 5, code: '05', name: 'MISC TRIP' },
-    ]);
-
-    const [formData, setFormData] = useState(records[0]);
+    useEffect(() => {
+        if (records.length > 0 && currentIndex < records.length) {
+            setFormData(records[currentIndex]);
+        }
+    }, [records, currentIndex]);
 
     const handleInputChange = (field, value) => setFormData({ ...formData, [field]: value });
-    const handleAddNew = () => { setMode('add'); setFormData({ id: records.length + 1, code: '', name: '' }); };
+    const handleAddNew = () => { setMode('add'); setFormData({ id: null, code: '', name: '' }); };
     const handleEdit = () => setMode('edit');
-    const handleSave = () => {
-        if (mode === 'add') { setRecords([...records, formData]); setCurrentIndex(records.length); }
-        else { setRecords(records.map((r, i) => i === currentIndex ? formData : r)); }
-        setMode('view');
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            if (mode === 'add') {
+                await create({ code: formData.code, name: formData.name });
+                setCurrentIndex(records.length);
+            } else {
+                await update(formData.id, { code: formData.code, name: formData.name });
+            }
+            setMode('view');
+        } catch (err) { alert('Error: ' + err.message); }
+        finally { setIsSaving(false); }
     };
-    const handleCancel = () => { setFormData(records[currentIndex]); setMode('view'); };
-    const handleDelete = () => {
-        if (records.length > 1) {
-            const filtered = records.filter((_, i) => i !== currentIndex);
-            setRecords(filtered);
-            setCurrentIndex(Math.max(0, currentIndex - 1));
-            setFormData(filtered[Math.max(0, currentIndex - 1)]);
+
+    const handleCancel = () => { if (records.length > 0) setFormData(records[currentIndex]); setMode('view'); };
+
+    const handleDelete = async () => {
+        if (window.confirm('Delete this record?')) {
+            try {
+                await remove(formData.id);
+                if (currentIndex >= records.length - 1) setCurrentIndex(Math.max(0, records.length - 2));
+            } catch (err) { alert('Error: ' + err.message); }
         }
     };
-    const handleNext = () => { if (currentIndex < records.length - 1) { setCurrentIndex(currentIndex + 1); setFormData(records[currentIndex + 1]); } };
-    const handlePrevious = () => { if (currentIndex > 0) { setCurrentIndex(currentIndex - 1); setFormData(records[currentIndex - 1]); } };
+
+    const handleNext = () => { if (currentIndex < records.length - 1) setCurrentIndex(currentIndex + 1); };
+    const handlePrevious = () => { if (currentIndex > 0) setCurrentIndex(currentIndex - 1); };
+
+    if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /><span className="ml-3 text-slate-400">Loading...</span></div>;
+    if (error) return <div className="flex flex-col items-center justify-center h-64 space-y-4"><p className="text-red-400">Error: {error}</p><button onClick={refresh} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">Retry</button></div>;
 
     const isViewMode = mode === 'view';
 
@@ -45,13 +61,13 @@ const BiltyTypeMaster = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h2 className="text-3xl font-bold gradient-text tracking-tight">Bilty Type Master</h2>
-                    <p className="text-slate-400 mt-1">Manage bilty/waybill types</p>
+                    <p className="text-slate-400 mt-1">Manage bilty types</p>
                 </div>
-                <span className="px-3 py-1.5 bg-slate-800/50 rounded-lg text-xs text-slate-400">Record {currentIndex + 1} of {records.length}</span>
+                <span className="px-3 py-1.5 bg-slate-800/50 rounded-lg text-xs text-slate-400">Record {records.length > 0 ? currentIndex + 1 : 0} of {records.length}</span>
             </div>
 
             <div className="glass-card max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="px-6 py-4 border-b border-white/5 bg-gradient-to-r from-blue-600/20 to-cyan-600/20">
+                <div className="px-6 py-4 border-b border-white/5 bg-gradient-to-r from-blue-600/20 to-indigo-600/20">
                     <div className="flex items-center space-x-3">
                         <FileText className="w-6 h-6 text-blue-400" />
                         <h3 className="text-xl font-bold text-white italic">Bilty Type Master</h3>
@@ -62,16 +78,14 @@ const BiltyTypeMaster = () => {
                     <div className="grid grid-cols-4 items-center gap-4">
                         <label className="text-right text-slate-300 font-medium">Bilty Type Code :</label>
                         <div className="col-span-3 flex space-x-2">
-                            <input type="text" value={formData.code} onChange={(e) => handleInputChange('code', e.target.value)} disabled={isViewMode} className="w-24 input-modern disabled:opacity-70" />
-                            <button className="p-3 bg-slate-700/50 hover:bg-slate-700 rounded-xl transition-colors border border-slate-600/50">
-                                <Search className="w-5 h-5 text-slate-400" />
-                            </button>
+                            <input type="text" value={formData.code || ''} onChange={(e) => handleInputChange('code', e.target.value)} disabled={isViewMode} placeholder="e.g., TP" className="w-24 input-modern disabled:opacity-70" />
+                            <button className="p-3 bg-slate-700/50 hover:bg-slate-700 rounded-xl transition-colors border border-slate-600/50"><Search className="w-5 h-5 text-slate-400" /></button>
                         </div>
                     </div>
                     <div className="grid grid-cols-4 items-center gap-4">
                         <label className="text-right text-slate-300 font-medium">Bilty Type Name :</label>
                         <div className="col-span-3">
-                            <input type="text" value={formData.name} onChange={(e) => handleInputChange('name', e.target.value)} disabled={isViewMode} className="w-full input-modern disabled:opacity-70" placeholder="Enter bilty type name" />
+                            <input type="text" value={formData.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} disabled={isViewMode} placeholder="Enter bilty type name" className="w-full input-modern disabled:opacity-70" />
                         </div>
                     </div>
                 </div>
@@ -79,23 +93,19 @@ const BiltyTypeMaster = () => {
                 <div className="px-6 py-4 border-t border-white/5 bg-slate-800/30">
                     <div className="flex flex-wrap items-center justify-center gap-2">
                         <button onClick={handleAddNew} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95"><Plus className="w-4 h-4" /><span>Add New</span></button>
-                        <button onClick={handleEdit} disabled={mode !== 'view'} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95"><Edit className="w-4 h-4" /><span>Edit</span></button>
+                        <button onClick={handleEdit} disabled={mode !== 'view' || records.length === 0} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95"><Edit className="w-4 h-4" /><span>Edit</span></button>
                         <button onClick={handleNext} disabled={currentIndex >= records.length - 1} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95"><span>Next</span><ChevronRight className="w-4 h-4" /></button>
                         <button onClick={handlePrevious} disabled={currentIndex <= 0} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95"><ChevronLeft className="w-4 h-4" /><span>Previous</span></button>
-                        <button onClick={handleSave} disabled={mode === 'view'} className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 hover:scale-105 active:scale-95"><Save className="w-4 h-4" /><span>Save</span></button>
+                        <button onClick={handleSave} disabled={mode === 'view' || isSaving} className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 hover:scale-105 active:scale-95">{isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}<span>{isSaving ? 'Saving...' : 'Save'}</span></button>
                         <button onClick={handleCancel} disabled={mode === 'view'} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95"><X className="w-4 h-4" /><span>Cancel</span></button>
-                        <button onClick={handleDelete} className="flex items-center space-x-2 px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all border border-red-500/30 font-medium hover:scale-105 active:scale-95"><Trash2 className="w-4 h-4" /><span>Delete</span></button>
+                        <button onClick={handleDelete} disabled={records.length === 0} className="flex items-center space-x-2 px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all border border-red-500/30 font-medium disabled:opacity-50 hover:scale-105 active:scale-95"><Trash2 className="w-4 h-4" /><span>Delete</span></button>
                         <button className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95"><LogOut className="w-4 h-4" /><span>Exit</span></button>
                     </div>
                 </div>
             </div>
 
-            {/* Mode Indicator */}
             <div className="flex justify-center">
-                <span className={`px-4 py-2 rounded-full text-sm font-medium ${mode === 'view' ? 'bg-slate-700/50 text-slate-400' :
-                        mode === 'add' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                            'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    }`}>
+                <span className={`px-4 py-2 rounded-full text-sm font-medium ${mode === 'view' ? 'bg-slate-700/50 text-slate-400' : mode === 'add' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'}`}>
                     Mode: {mode === 'view' ? '👁️ View Only' : mode === 'add' ? '➕ Adding New' : '✏️ Editing'}
                 </span>
             </div>

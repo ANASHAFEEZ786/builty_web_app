@@ -1,0 +1,166 @@
+# 🚀 Supabase Setup Guide
+
+This guide will help you connect your Builty Transport app to Supabase (free PostgreSQL database).
+
+---
+
+## Step 1: Create Supabase Account
+
+1. Go to **[https://supabase.com](https://supabase.com)**
+2. Click **"Start your project"**
+3. Sign up with GitHub (recommended) or email
+4. You'll land on the dashboard
+
+---
+
+## Step 2: Create New Project
+
+1. Click **"New Project"**
+2. Fill in:
+   - **Name**: `builty-transport`
+   - **Database Password**: Create a strong password (save this!)
+   - **Region**: Choose closest to Pakistan (Mumbai or Singapore)
+3. Click **"Create new project"**
+4. Wait 2-3 minutes for setup
+
+---
+
+## Step 3: Get Your Credentials
+
+1. Go to **Settings** (gear icon) → **API**
+2. Copy these values:
+
+```
+PROJECT URL:     https://xxxxxx.supabase.co
+ANON PUBLIC KEY: eyJhbGciOiJIUzI1NiIs...
+```
+
+---
+
+## Step 4: Set Up the Database
+
+### Option A: Using Supabase SQL Editor (Easiest)
+
+1. Go to **SQL Editor** in Supabase dashboard
+2. Click **"New query"**
+3. Copy the entire contents of [database/schema.sql](file:///c:/Users/muhammad.anas/.gemini/antigravity/brain/d327b1bb-28ed-47e2-9c15-c1f41bee8d5d/builty_web_app/database/schema.sql)
+4. Paste into the editor
+5. Click **"Run"**
+6. ✅ All tables will be created with sample data!
+
+### Option B: Using Supabase CLI
+
+```bash
+# Install Supabase CLI
+npm install -g supabase
+
+# Login
+supabase login
+
+# Link your project
+supabase link --project-ref your-project-ref
+
+# Run migrations
+supabase db push
+```
+
+---
+
+## Step 5: Update Your .env File
+
+Open [.env](file:///c:/Users/muhammad.anas/.gemini/antigravity/brain/d327b1bb-28ed-47e2-9c15-c1f41bee8d5d/builty_web_app/.env) in your project and update:
+
+```env
+# Change mode to supabase
+VITE_DB_MODE=supabase
+
+# Add your Supabase credentials
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+```
+
+---
+
+## Step 6: Install Supabase Client
+
+```bash
+npm install @supabase/supabase-js
+```
+
+---
+
+## Step 7: Restart Your App
+
+```bash
+npm run dev
+```
+
+The app will now fetch data from Supabase!
+
+---
+
+## 🔐 Authentication Setup (Optional)
+
+Supabase has built-in authentication. To enable:
+
+1. Go to **Authentication** → **Providers**
+2. Enable **Email** provider
+3. Configure email templates
+4. Users can now sign up and log in!
+
+For now, we're using simple demo authentication. You can upgrade to Supabase Auth later.
+
+---
+
+## 📊 Table Overview
+
+After running the schema, you'll have these tables:
+
+| Table | Description |
+|-------|-------------|
+| `companies` | Multi-tenant company data |
+| `users` | User accounts |
+| `chart_of_accounts` | Financial accounts |
+| `drivers` | Driver/Cleaner master |
+| `bilty_types` | Types of bilty |
+| `stations` | Station master |
+| `expenses` | Expense types |
+| `diesel_stations` | Fuel stations |
+| `items` | Inventory items |
+| `vehicles` | Company vehicles |
+| `bookings` | Bilty/booking records |
+| `challans` | Dispatch documents |
+| `invoices` | Customer invoices |
+| `payments` | Payment records |
+
+---
+
+## 🔄 Row Level Security (RLS)
+
+The schema includes RLS policies so:
+- Each company only sees their own data
+- Users can't access other companies' data
+- Perfect for SaaS multi-tenant apps!
+
+---
+
+## 🆘 Troubleshooting
+
+### "Permission denied" error
+- Make sure RLS policies are set correctly
+- Check that user has company_id assigned
+
+### "Table not found" error
+- Run the schema.sql file completely
+- Check for any SQL errors in the output
+
+### "Invalid API Key" error
+- Double-check your .env file
+- Make sure you're using anon public key, not service role key
+
+---
+
+## 📞 Need Help?
+
+- Supabase Docs: https://supabase.com/docs
+- Supabase Discord: https://discord.supabase.com
