@@ -52,7 +52,7 @@ const UserManagement = () => {
                 is_active: formData.is_active,
                 
             };
-            if (formData.password) saveData.password_hash = formData.password; // In production, hash this
+            if (formData.password) saveData.password = formData.password; // In production, hash this
 
             if (selectedUser) {
                 await update(selectedUser.id, saveData);
