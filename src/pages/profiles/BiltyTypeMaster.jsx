@@ -72,7 +72,7 @@ const BiltyTypeMaster = () => {
 
     const columns = [
         { key: 'code', label: 'Code' },
-        { key: 'description', label: 'Description' }
+        { key: 'description', label: 'Builty Type Name' }
     ];
 
     if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-teal-500" /><span className="ml-3 text-slate-400">Loading...</span></div>;
