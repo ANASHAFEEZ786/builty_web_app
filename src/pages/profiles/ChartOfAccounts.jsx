@@ -216,9 +216,12 @@ const ChartOfAccounts = () => {
                             <input
                                 type="text"
                                 value={formData.code || ''}
-                                onChange={(e) => handleInputChange('code', e.target.value)}
-                                className="w-full input-modern"
-                                placeholder="e.g., 1001"
+                                readOnly
+                                disabled
+                                //onChange={(e) => handleInputChange('code', e.target.value)}
+                                //className="w-full input-modern"
+                                className="w-full input-modern bg-slate-700/50 cursor-not-allowed opacity-70"
+                                //placeholder="e.g., 1001"
                             />
                         </div>
                         <div>
