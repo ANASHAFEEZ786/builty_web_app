@@ -50,7 +50,7 @@ const UserManagement = () => {
                 email: formData.email,
                 role: formData.role,
                 is_active: formData.is_active,
-                company_id: '11111111-1111-1111-1111-111111111111'
+                
             };
             if (formData.password) saveData.password_hash = formData.password; // In production, hash this
 
