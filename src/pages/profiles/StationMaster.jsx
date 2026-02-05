@@ -1,267 +1,151 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Search, ChevronLeft, ChevronRight, Save, X, Trash2, LogOut, Plus, Edit, Loader2, Lock } from 'lucide-react';
+import { MapPin, Plus, Loader2, Save, X, AlertTriangle } from 'lucide-react';
 import { useDataService } from '../../lib/dataService';
 import { usePermissions } from '../../lib/usePermissions';
+import { useToast } from '../../components/ui/Toast';
+import Modal from '../../components/ui/Modal';
+import DataTable from '../../components/ui/DataTable';
 
 const StationMaster = () => {
-    const [mode, setMode] = useState('view');
-    const [currentIndex, setCurrentIndex] = useState(0);
     const [isVisible, setIsVisible] = useState(false);
-    const [formData, setFormData] = useState({ id: null, code: '', name: '' });
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalMode, setModalMode] = useState('add');
+    const [formData, setFormData] = useState({ id: null, code: '', name: '', city: '', province: '' });
     const [isSaving, setIsSaving] = useState(false);
+    const [validationError, setValidationError] = useState('');
+    const [deleteConfirm, setDeleteConfirm] = useState(null);
 
-    // Get permissions for this module
     const { canAdd, canEdit, canDelete, canView } = usePermissions('stations');
+    const { data: records, loading, error, create, update, remove, refresh } = useDataService('station');
+    const toast = useToast();
 
-    // Connect to database
-    const { data: records, loading, error, create, update, remove, refresh } = useDataService('stations');
+    useEffect(() => { setIsVisible(true); }, []);
 
-    useEffect(() => {
-        setIsVisible(true);
-    }, []);
+    const getNextCode = () => {
+        if (records.length === 0) return '1';
+        const codes = records.map(r => parseInt(r.code) || 0);
+        return String(Math.max(...codes) + 1);
+    };
 
-    // Update form data when records change or index changes
-    useEffect(() => {
-        if (records.length > 0 && currentIndex < records.length) {
-            setFormData(records[currentIndex]);
-        }
-    }, [records, currentIndex]);
+    const isCodeUnique = (code, excludeId = null) => {
+        return !records.some(r => r.code === code && r.id !== excludeId);
+    };
 
     const handleInputChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
+        setValidationError('');
     };
 
     const handleAddNew = () => {
         if (!canAdd) return;
-        setMode('add');
-        setFormData({ id: null, code: '', name: '' });
+        setModalMode('add');
+        setFormData({ id: null, code: getNextCode(), name: '', city: '', province: '' });
+        setValidationError('');
+        setModalOpen(true);
     };
 
-    const handleEdit = () => {
+    const handleEdit = (row) => {
         if (!canEdit) return;
-        setMode('edit');
+        setModalMode('edit');
+        setFormData({ ...row });
+        setValidationError('');
+        setModalOpen(true);
     };
 
     const handleSave = async () => {
+        if (!formData.code?.trim()) { setValidationError('Code is required'); return; }
+        if (!formData.name?.trim()) { setValidationError('Name is required'); return; }
+        if (!isCodeUnique(formData.code, formData.id)) { setValidationError('This code already exists'); return; }
+
         setIsSaving(true);
         try {
-            if (mode === 'add') {
-                await create({ code: formData.code, name: formData.name });
-                setCurrentIndex(records.length);
+            const saveData = { code: formData.code, name: formData.name, city: formData.city, province: formData.province };
+            if (modalMode === 'add') {
+                await create(saveData);
+                toast.success('Station created successfully!');
             } else {
-                await update(formData.id, { code: formData.code, name: formData.name });
+                await update(formData.id, saveData);
+                toast.success('Station updated successfully!');
             }
-            setMode('view');
+            setModalOpen(false);
         } catch (err) {
-            console.error('Save error:', err);
-            alert('Error saving record: ' + err.message);
+            toast.error('Error: ' + err.message);
         } finally {
             setIsSaving(false);
         }
     };
 
-    const handleCancel = () => {
-        if (records.length > 0) {
-            setFormData(records[currentIndex]);
-        }
-        setMode('view');
-    };
+    const handleDelete = (row) => setDeleteConfirm(row);
 
-    const handleDelete = async () => {
-        if (!canDelete) return;
-        if (window.confirm('Are you sure you want to delete this record?')) {
-            try {
-                await remove(formData.id);
-                if (currentIndex >= records.length - 1) {
-                    setCurrentIndex(Math.max(0, records.length - 2));
-                }
-            } catch (err) {
-                console.error('Delete error:', err);
-                alert('Error deleting record: ' + err.message);
-            }
+    const confirmDelete = async () => {
+        if (!deleteConfirm) return;
+        try {
+            await remove(deleteConfirm.id);
+            toast.success('Station deleted successfully!');
+        } catch (err) {
+            toast.error('Error: ' + err.message);
+        } finally {
+            setDeleteConfirm(null);
         }
     };
 
-    const handleNext = () => {
-        if (currentIndex < records.length - 1) {
-            setCurrentIndex(currentIndex + 1);
-        }
-    };
+    const columns = [
+        { key: 'code', label: 'Code' },
+        { key: 'name', label: 'Name' },
+        { key: 'city', label: 'City' },
+        { key: 'province', label: 'Province' }
+    ];
 
-    const handlePrevious = () => {
-        if (currentIndex > 0) {
-            setCurrentIndex(currentIndex - 1);
-        }
-    };
-
-    const isViewMode = mode === 'view';
-
-    // Loading state
-    if (loading) {
-        return (
-            <div className="flex items-center justify-center h-64">
-                <Loader2 className="w-8 h-8 animate-spin text-teal-500" />
-                <span className="ml-3 text-slate-400">Loading stations...</span>
-            </div>
-        );
-    }
-
-    // Error state
-    if (error) {
-        return (
-            <div className="flex flex-col items-center justify-center h-64 space-y-4">
-                <p className="text-red-400">Error loading data: {error}</p>
-                <button onClick={refresh} className="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-white">
-                    Try Again
-                </button>
-            </div>
-        );
-    }
-
-    // Permission denied button style
-    const DisabledButton = ({ children, title }) => (
-        <button disabled title={title} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-800/30 text-slate-600 rounded-lg border border-slate-700/30 font-medium cursor-not-allowed opacity-50">
-            <Lock className="w-4 h-4" />{children}
-        </button>
-    );
+    if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="w-8 h-8 animate-spin text-teal-500" /><span className="ml-3 text-slate-400">Loading...</span></div>;
+    if (error) return <div className="flex flex-col items-center justify-center h-64 space-y-4"><p className="text-red-400">Error: {error}</p><button onClick={refresh} className="px-4 py-2 bg-slate-700 rounded-lg text-white">Retry</button></div>;
 
     return (
         <div className={`space-y-6 text-text-main transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-            {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-3xl font-bold gradient-text tracking-tight">Station Master</h2>
-                    <p className="text-slate-400 mt-1">Manage stations and locations</p>
-                </div>
+                <div><h2 className="text-3xl font-bold gradient-text tracking-tight">Station Master</h2><p className="text-slate-400 mt-1">Manage stations and locations</p></div>
                 <div className="flex items-center space-x-3">
-                    {/* Permission Indicator */}
                     <div className="flex items-center space-x-1 text-xs">
                         <span className={`px-2 py-1 rounded ${canView ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-700 text-slate-500'}`}>View</span>
                         <span className={`px-2 py-1 rounded ${canAdd ? 'bg-blue-500/20 text-blue-400' : 'bg-slate-700 text-slate-500'}`}>Add</span>
                         <span className={`px-2 py-1 rounded ${canEdit ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-500'}`}>Edit</span>
                         <span className={`px-2 py-1 rounded ${canDelete ? 'bg-red-500/20 text-red-400' : 'bg-slate-700 text-slate-500'}`}>Delete</span>
                     </div>
-                    <span className="px-3 py-1.5 bg-slate-800/50 rounded-lg text-xs text-slate-400">
-                        Record {records.length > 0 ? currentIndex + 1 : 0} of {records.length}
-                    </span>
+                    {canAdd && <button onClick={handleAddNew} className="flex items-center space-x-2 px-4 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white rounded-xl transition-all font-medium shadow-lg hover:scale-105"><Plus className="w-5 h-5" /><span>Add New</span></button>}
                 </div>
             </div>
 
-            {/* Main Form */}
-            <div className="glass-card max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="px-6 py-4 border-b border-white/5 bg-gradient-to-r from-emerald-600/20 to-teal-600/20">
-                    <div className="flex items-center space-x-3">
-                        <MapPin className="w-6 h-6 text-emerald-400" />
-                        <h3 className="text-xl font-bold text-white italic">Station Master</h3>
-                    </div>
-                </div>
-
-                <div className="p-6 space-y-5">
-                    {/* Station Code */}
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <label className="text-right text-slate-300 font-medium">Station Code :</label>
-                        <div className="col-span-3 flex space-x-2">
-                            <input
-                                type="text"
-                                value={formData.code || ''}
-                                onChange={(e) => handleInputChange('code', e.target.value)}
-                                disabled={isViewMode}
-                                placeholder="e.g., LHE"
-                                className="w-24 input-modern disabled:opacity-70"
-                            />
-                            <button className="p-3 bg-slate-700/50 hover:bg-slate-700 rounded-xl transition-colors border border-slate-600/50">
-                                <Search className="w-5 h-5 text-slate-400" />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Station Name */}
-                    <div className="grid grid-cols-4 items-center gap-4">
-                        <label className="text-right text-slate-300 font-medium">Station Name :</label>
-                        <div className="col-span-3">
-                            <input
-                                type="text"
-                                value={formData.name || ''}
-                                onChange={(e) => handleInputChange('name', e.target.value)}
-                                disabled={isViewMode}
-                                placeholder="Enter station name"
-                                className="w-full input-modern disabled:opacity-70"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="px-6 py-4 border-t border-white/5 bg-slate-800/30">
-                    <div className="flex flex-wrap items-center justify-center gap-2">
-                        {/* Add Button - Only show if user has add permission */}
-                        {canAdd ? (
-                            <button onClick={handleAddNew} className="flex items-center space-x-2 px-4 py-2.5 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 rounded-lg transition-all border border-emerald-500/30 font-medium hover:scale-105 active:scale-95">
-                                <Plus className="w-4 h-4" /><span>Add New</span>
-                            </button>
-                        ) : (
-                            <DisabledButton title="You don't have permission to add"><span>Add New</span></DisabledButton>
-                        )}
-
-                        {/* Edit Button - Only show if user has edit permission */}
-                        {canEdit ? (
-                            <button onClick={handleEdit} disabled={mode !== 'view' || records.length === 0} className="flex items-center space-x-2 px-4 py-2.5 bg-amber-600/20 hover:bg-amber-600/40 text-amber-400 rounded-lg transition-all border border-amber-500/30 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                                <Edit className="w-4 h-4" /><span>Edit</span>
-                            </button>
-                        ) : (
-                            <DisabledButton title="You don't have permission to edit"><span>Edit</span></DisabledButton>
-                        )}
-
-                        {/* Navigation buttons - always visible */}
-                        <button onClick={handleNext} disabled={currentIndex >= records.length - 1} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                            <span>Next</span><ChevronRight className="w-4 h-4" />
-                        </button>
-                        <button onClick={handlePrevious} disabled={currentIndex <= 0} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                            <ChevronLeft className="w-4 h-4" /><span>Previous</span>
-                        </button>
-
-                        {/* Save/Cancel - Only show in edit/add mode if user has permission */}
-                        {(mode === 'add' && canAdd) || (mode === 'edit' && canEdit) ? (
-                            <>
-                                <button onClick={handleSave} disabled={isSaving} className="flex items-center space-x-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-all font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                                    <span>{isSaving ? 'Saving...' : 'Save'}</span>
-                                </button>
-                                <button onClick={handleCancel} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95">
-                                    <X className="w-4 h-4" /><span>Cancel</span>
-                                </button>
-                            </>
-                        ) : mode !== 'view' ? (
-                            <button onClick={handleCancel} className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95">
-                                <X className="w-4 h-4" /><span>Cancel</span>
-                            </button>
-                        ) : null}
-
-                        {/* Delete Button - Only show if user has delete permission */}
-                        {canDelete ? (
-                            <button onClick={handleDelete} disabled={records.length === 0} className="flex items-center space-x-2 px-4 py-2.5 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-all border border-red-500/30 font-medium disabled:opacity-50 hover:scale-105 active:scale-95">
-                                <Trash2 className="w-4 h-4" /><span>Delete</span>
-                            </button>
-                        ) : (
-                            <DisabledButton title="You don't have permission to delete"><span>Delete</span></DisabledButton>
-                        )}
-
-                        <button className="flex items-center space-x-2 px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg transition-all border border-slate-600/50 font-medium hover:scale-105 active:scale-95">
-                            <LogOut className="w-4 h-4" /><span>Exit</span>
-                        </button>
-                    </div>
-                </div>
+            <div className="glass-card p-6">
+                <div className="flex items-center space-x-3 mb-6"><MapPin className="w-6 h-6 text-emerald-400" /><h3 className="text-xl font-bold text-white">Station List</h3><span className="px-3 py-1 bg-slate-800/50 rounded-full text-sm text-slate-400">{records.length} records</span></div>
+                <DataTable columns={columns} data={records} onEdit={handleEdit} onDelete={handleDelete} canEdit={canEdit} canDelete={canDelete} />
             </div>
 
-            {/* Mode Indicator */}
-            <div className="flex justify-center">
-                <span className={`px-4 py-2 rounded-full text-sm font-medium ${mode === 'view' ? 'bg-slate-700/50 text-slate-400' :
-                    mode === 'add' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                        'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                    }`}>
-                    Mode: {mode === 'view' ? '👁️ View Only' : mode === 'add' ? '➕ Adding New' : '✏️ Editing'}
-                </span>
-            </div>
+            <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalMode === 'add' ? 'Add New Station' : 'Edit Station'} size="md">
+                <div className="space-y-4">
+                    {validationError && <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400"><AlertTriangle className="w-5 h-5" /><span>{validationError}</span></div>}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-sm text-slate-300 mb-1.5">Code *</label><input type="text" value={formData.code || ''} onChange={(e) => handleInputChange('code', e.target.value)} className="w-full input-modern" /></div>
+                        <div><label className="block text-sm text-slate-300 mb-1.5">Name *</label><input type="text" value={formData.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} className="w-full input-modern" /></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div><label className="block text-sm text-slate-300 mb-1.5">City</label><input type="text" value={formData.city || ''} onChange={(e) => handleInputChange('city', e.target.value)} className="w-full input-modern" /></div>
+                        <div><label className="block text-sm text-slate-300 mb-1.5">Province</label><input type="text" value={formData.province || ''} onChange={(e) => handleInputChange('province', e.target.value)} className="w-full input-modern" /></div>
+                    </div>
+                    <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
+                        <button onClick={() => setModalOpen(false)} className="px-4 py-2.5 bg-slate-700/50 hover:bg-slate-700 text-white rounded-lg"><X className="w-4 h-4 inline mr-2" />Cancel</button>
+                        <button onClick={handleSave} disabled={isSaving} className="px-4 py-2.5 bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg disabled:opacity-50">{isSaving ? <Loader2 className="w-4 h-4 inline mr-2 animate-spin" /> : <Save className="w-4 h-4 inline mr-2" />}{isSaving ? 'Saving...' : 'Save'}</button>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal isOpen={!!deleteConfirm} onClose={() => setDeleteConfirm(null)} title="Confirm Delete" size="sm">
+                <div className="space-y-4">
+                    <p className="text-slate-300">Delete <strong className="text-white">{deleteConfirm?.name}</strong>?</p>
+                    <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                        <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 bg-slate-700/50 text-white rounded-lg">Cancel</button>
+                        <button onClick={confirmDelete} className="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button>
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };
