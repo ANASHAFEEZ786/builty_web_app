@@ -101,7 +101,7 @@ const DieselStationMaster = () => {
                 <div className="space-y-4">
                     {validationError && <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400"><AlertTriangle className="w-5 h-5" />{validationError}</div>}
                     <div className="grid grid-cols-2 gap-4">
-                        <div><label className="block text-sm text-slate-300 mb-1.5">Code *</label><input type="text" value={formData.code || ''} onChange={(e) => handleInputChange('code', e.target.value)} className="w-full input-modern" /></div>
+                        <div><label className="block text-sm text-slate-300 mb-1.5">Code *</label><input type="text" value={formData.code || ''} readOnly disabled className="w-full input-modern" /></div>
                         <div><label className="block text-sm text-slate-300 mb-1.5">Name *</label><input type="text" value={formData.name || ''} onChange={(e) => handleInputChange('name', e.target.value)} className="w-full input-modern" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
