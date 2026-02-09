@@ -101,7 +101,7 @@ const BiltyTypeMaster = () => {
             <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={modalMode === 'add' ? 'Add Bilty Type' : 'Edit Bilty Type'} size="sm">
                 <div className="space-y-4">
                     {validationError && <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400"><AlertTriangle className="w-5 h-5" /><span>{validationError}</span></div>}
-                    <div><label className="block text-sm text-slate-300 mb-1.5">Code *</label><input type="text" value={formData.code || ''} onChange={(e) => handleInputChange('code', e.target.value)} className="w-full input-modern" /></div>
+                    <div><label className="block text-sm text-slate-300 mb-1.5">Code *</label><input type="text" value={formData.code || ''} readOnly disabled className="w-full input-modern" /></div>
                     <div><label className="block text-sm text-slate-300 mb-1.5">Description *</label><input type="text" value={formData.description || ''} onChange={(e) => handleInputChange('description', e.target.value)} className="w-full input-modern" /></div>
                     <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
                         <button onClick={() => setModalOpen(false)} className="px-4 py-2.5 bg-slate-700/50 text-white rounded-lg"><X className="w-4 h-4 inline mr-2" />Cancel</button>
