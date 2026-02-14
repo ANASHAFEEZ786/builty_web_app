@@ -21,7 +21,8 @@ import {
     FolderTree,
     Package,
     User,
-    Shield
+    Shield,
+    Edit
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -58,6 +59,7 @@ const Sidebar = ({ onLogout }) => {
         { label: 'Payments', icon: CreditCard, path: '/payments' },
         { label: 'Reports', icon: BarChart3, path: '/reports' },
         { label: 'Settings', icon: Settings, path: '/settings' },
+        { label: 'Simple Form', icon: Edit, path: '/simple' }
     ];
 
     const isProfileActive = location.pathname.startsWith('/profiles');
