@@ -10,6 +10,8 @@ import Invoices from "./pages/Invoices";
 import Payments from "./pages/Payments";
 import Settings from "./pages/Settings";
 import Reports from "./pages/Reports";
+import SimpleForm from "./pages/SimpleForm";
+
 
 // Profile Pages
 import ChartOfAccounts from "./pages/profiles/ChartOfAccounts";
@@ -81,6 +83,8 @@ const AppRoutes = () => {
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/simple" element={<SimpleForm />} />
+
 
                 {/* Profile Routes */}
                 <Route path="/profiles/chart-of-accounts" element={<ChartOfAccounts />} />
